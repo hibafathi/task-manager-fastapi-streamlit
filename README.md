@@ -50,3 +50,13 @@ TASK-MANAGER/
 │
 └── frontend/
     │   app.py
+
+
+Author
+Hiba Fathima M
+B.Tech Computer Science & Engineering
+MEA Engineering College
+
+Internship Domain
+
+Python | FastAPI | Streamlit
