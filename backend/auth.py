@@ -1,4 +1,3 @@
-# File: backend/auth.py
 from uuid import uuid4
 
 from fastapi import Depends, HTTPException, status
