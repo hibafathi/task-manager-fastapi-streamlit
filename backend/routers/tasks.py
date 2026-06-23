@@ -1,5 +1,8 @@
+# File: backend/routers/tasks.py
 from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
 from backend.auth import get_current_user
 from backend.database import get_connection
 from backend.schemas import (
@@ -59,6 +62,7 @@ def create_task(
         row = cursor.fetchone()
 
     if not row:
+        # Failing fast here makes task creation issues easier to debug during development.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create task",
@@ -84,6 +88,7 @@ def get_tasks(
         query += " AND priority = ?"
         params.append(priority)
 
+    # Ascending order keeps older tasks first, which matches your current UI preference.
     query += " ORDER BY id ASC"
 
     with get_connection() as conn:
@@ -136,6 +141,7 @@ def get_task(
             detail="Task not found",
         )
 
+    # Ownership check prevents one user from viewing another user's task by ID.
     if row["owner_email"] != current_user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
