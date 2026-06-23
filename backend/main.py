@@ -1,3 +1,4 @@
+# File: backend/main.py
 import time
 
 from fastapi import FastAPI, Request
@@ -16,6 +17,7 @@ app = FastAPI(
 
 @app.on_event("startup")
 def on_startup() -> None:
+    # Initializing the database on startup avoids manual setup before first run.
     init_db()
 
 
@@ -24,11 +26,13 @@ async def log_request_time(request: Request, call_next):
     start_time = time.perf_counter()
     response = await call_next(request)
     duration = time.perf_counter() - start_time
+    # Exposing process time is useful for quick local performance checks during development.
     response.headers["X-Process-Time"] = f"{duration:.4f}"
     return response
 
 
 app.add_middleware(
+    # Open CORS is acceptable for local internship development, but should be restricted in production.
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
