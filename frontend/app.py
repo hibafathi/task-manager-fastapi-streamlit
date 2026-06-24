@@ -7,7 +7,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL ="https://task-manager-fastapi-streamlit.onrender.com"
 REQUEST_TIMEOUT = 10
 
 
