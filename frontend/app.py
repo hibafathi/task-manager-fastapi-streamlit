@@ -7,7 +7,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-API_BASE_URL ="https://task-manager-fastapi-streamlit.onrender.com"
+API_BASE_URL = "https://task-manager-fastapi-streamlit.onrender.com"
 REQUEST_TIMEOUT = 10
 
 
@@ -125,15 +125,6 @@ def apply_custom_css() -> None:
                 margin: 0 auto;
             }
 
-            .auth-card {
-                background: rgba(255,255,255,0.94);
-                backdrop-filter: blur(8px);
-                border-radius: 22px;
-                padding: 1.15rem;
-                border: 1px solid rgba(226,232,240,0.95);
-                box-shadow: 0 18px 42px rgba(15, 23, 42, 0.10);
-            }
-
             .sidebar-brand {
                 font-size: 1.45rem;
                 font-weight: 800;
@@ -226,7 +217,6 @@ def api_call(
     if 200 <= response.status_code < 300:
         return True, data
 
-    # Resetting auth state on 401 keeps the UI from staying in a broken logged-in state.
     if response.status_code == 401 and require_auth:
         st.session_state["token"] = None
         st.session_state["email"] = None
@@ -322,7 +312,6 @@ def validate_task_form(title: str, description: str, due_date_value: date | None
         return "Title must be at most 200 characters."
     if len(cleaned_description) > 1000:
         return "Description must be at most 1000 characters."
-    # Blocking past dates in the UI prevents avoidable backend validation failures.
     if due_date_value is not None and due_date_value < date.today():
         return "Due date cannot be in the past."
     return None
@@ -330,18 +319,21 @@ def validate_task_form(title: str, description: str, due_date_value: date | None
 
 def validate_register_form(name: str, email: str, password: str, confirm_password: str) -> str | None:
     cleaned_name = name.strip()
+    cleaned_email = email.strip()
+    cleaned_password = password.strip()
+    cleaned_confirm_password = confirm_password.strip()
 
-    if not cleaned_name or not email.strip() or not password.strip() or not confirm_password.strip():
+    if not cleaned_name or not cleaned_email or not cleaned_password or not cleaned_confirm_password:
         return "All fields are required."
     if len(cleaned_name) < 2:
         return "Name must have at least 2 characters."
     if len(cleaned_name) > 100:
         return "Name must be at most 100 characters."
-    if len(password) < 6:
+    if len(cleaned_password) < 6:
         return "Password must have at least 6 characters."
-    if len(password) > 72:
+    if len(cleaned_password) > 72:
         return "Password must be at most 72 characters."
-    if password != confirm_password:
+    if cleaned_password != cleaned_confirm_password:
         return "Passwords do not match."
     return None
 
@@ -365,7 +357,6 @@ def current_display_name() -> str:
     stored_name = st.session_state.get("name")
     if stored_name and str(stored_name).strip():
         return str(stored_name).strip()
-    # Falling back to email keeps the greeting usable even if backend name support is missing.
     return derive_name_from_email(st.session_state.get("email"))
 
 
@@ -501,14 +492,17 @@ def render_login_page() -> None:
                 submitted = st.form_submit_button("Login", use_container_width=True)
 
             if submitted:
-                if not email.strip() or not password.strip():
+                cleaned_email = email.strip()
+                cleaned_password = password.strip()
+
+                if not cleaned_email or not cleaned_password:
                     st.error("Email and password are required.")
                 else:
                     with st.spinner("Logging in..."):
                         ok, data = api_call(
                             "POST",
                             "/auth/login",
-                            json={"email": email.strip(), "password": password},
+                            json={"email": cleaned_email, "password": cleaned_password},
                         )
                     if ok:
                         st.session_state["token"] = data["access_token"]
@@ -550,24 +544,34 @@ def render_register_page() -> None:
                 submitted = st.form_submit_button("Create Account", use_container_width=True)
 
             if submitted:
-                validation_error = validate_register_form(name, email, password, confirm_password)
+                cleaned_name = name.strip()
+                cleaned_email = email.strip()
+                cleaned_password = password.strip()
+                cleaned_confirm_password = confirm_password.strip()
+
+                validation_error = validate_register_form(
+                    cleaned_name,
+                    cleaned_email,
+                    cleaned_password,
+                    cleaned_confirm_password,
+                )
+
                 if validation_error:
                     st.error(validation_error)
                 else:
-                    cleaned_name = name.strip()
                     with st.spinner("Creating account..."):
                         ok, data = api_call(
                             "POST",
                             "/auth/register",
                             json={
                                 "name": cleaned_name,
-                                "email": email.strip(),
-                                "password": password,
+                                "email": cleaned_email,
+                                "password": cleaned_password,
                             },
                         )
                     if ok:
                         st.session_state["last_registered_name"] = cleaned_name
-                        st.session_state["last_registered_email"] = email.strip()
+                        st.session_state["last_registered_email"] = cleaned_email
                         st.session_state["page"] = "login"
                         set_flash_message("Registration successful. Please login.", "success")
                         st.rerun()
@@ -982,8 +986,6 @@ def main() -> None:
     )
     init_session_state()
     apply_custom_css()
-
-    # Sidebar is rendered once here so navigation and auth state stay shared across all pages.
     render_sidebar()
 
     page = st.session_state.get("page", "login")
